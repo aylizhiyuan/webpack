@@ -16,15 +16,59 @@ webpack启动后会从Entry里配置的module开始递归解析Entry依赖的所
 ### 配置webpack
 
     npm install wepback webpack-cli -D
-    
+
 
 - 创建src
 - 创建dist 
     - 创建index.html
 - 配置文件webpack.config.js
     - entry:入口文件的地址
-    - module:依赖的模块
-    - output:输出文件
-    - plugin:插件
+    - module:配置模块
+    - output:配置出口文件
+    - plugin:配置插件
+    - devServer:配置开发服务器
 
+### 配置开发服务器
+
+    npm install webpack-dev-server -D
+
+- contentBase 配置开发服务器运行时的文件根目录
+- host 配置服务器监听的主机地址
+- compress 开发服务器是否启动gzip压缩
+- port 开发服务器监听的端口
+
+    devServer:{
+        contentBase:path.resolve(__dirname,'dist'),
+        host:'localhost',
+        compress:true,
+        port:8080
+    }
+
+同时配置npm命令
+
+    "script":{
+        "build":"webpack --mode development",
+        "dev":"webpack-dev-server --open --mode development"
+    }
+
+### 加载css文件
+
+通过使用不同的loader,webpack可以将不同的文件都转为js文件，比如css、es6/7、jsx等
+
+- test:匹配处理文件的扩展名的正则表达式
+- use:loader名称，就是你要使用的模块的名称
+- include/exclude:手动指定必须处理的文件夹或屏蔽不需要处理的文件夹
+- query:为loader提供额外的设置选项
+
+loader的三种写法
+
+- use
+- loader
+- use + loader
+
+css-loader
+
+    npm install style-loader css-loader -D
+
+配置我们的css
 
