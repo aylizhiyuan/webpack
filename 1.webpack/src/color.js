@@ -1,2 +1,2 @@
-export default "zfpx2";
+export default "lizhiyuan";
 throw Error('Wrong');
