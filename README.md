@@ -470,7 +470,13 @@ dependencies 和devdependencies 里面安装的模块是有区别的,dependencie
 > 最终这个模块的功能是将文件中引入的多个重复性的文件打包到一个公共的vendor中去
 
 
+## 3. webpack源码级别分析
 
+
+## 4. webpack制作loader
+
+
+## 5. webpack制作plugin
 
 
 
