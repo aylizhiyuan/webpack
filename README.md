@@ -339,8 +339,11 @@ new CopyWebpackPlugin([{
     } else {
         console.log('这是生产环境');
     }
-    
-     
+
+
+
+## 2. 构建一个react的webpack环境
+
 
 
 

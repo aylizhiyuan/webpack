@@ -1,7 +1,7 @@
 {
-  "name": "30.webpack",
+  "name": "webpack",
   "version": "1.0.0",
-  "description": "1. 构建一个react webpack配置\r 2. webpack常用的优化方案\r 3. 如何编写自定义loader和plugin",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "build-production": "cross-env NODE_ENV=production && webpack --mode development",
