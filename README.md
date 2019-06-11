@@ -342,7 +342,13 @@ new CopyWebpackPlugin([{
 
 
 
-## 2. 构建一个react的webpack环境
+## 2. 从零开始构建一个简易版的Vue webpack打包环境
+
+
+
+
+
+
 
 
 
