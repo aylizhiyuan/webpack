@@ -473,6 +473,125 @@ dependencies 和devdependencies 里面安装的模块是有区别的,dependencie
 ## 3. webpack源码级别分析
 
 
+### AST抽象语法树
+
+webpack和Lint等很多的工具和库的核心都是通过Abstract Syntax Tree抽象语法树这个概念来实现对于代码的检查、分析等操作的
+
+### 抽象语法树的用途
+
+- 代码语法的检查、代码风格的检查、代码的格式化、代码的高亮、代码错误、代码自动补全等
+- 代码混淆压缩
+- 优化变更代码、改变代码结构
+
+### 抽象语法树的定义
+
+这些工具的原理都是通过javascript parser把代码转化为一颗抽象语法树，这棵树定义了代码的结构，通过操控这棵树，我们可以精准的定位到声明语句、赋值语句、运算语句等等，实现对于代码的分析、变更等操作
+
+### javascript parser
+
+- javascript parser，把js源码转化为抽象语法树的解析器
+- 浏览器会把js源码通过解析器转为抽象语法树，再进一步转化为字节码或直接生成机器码
+- 一般来说每个js引擎都会有自己的抽象语法树结构，chrome的v8引擎，firefox的spiderMonkey引擎等
+
+常见的javascript parser有:
+
+- esprima
+- traceur
+- acorm
+- shift
+
+esprima
+
+- 通过esprima把源码转化为AST
+- 通过estraverse遍历并更新AST
+- 通过escodegen将AST重新生成源码
+
+        let esprima = require('esprima');
+        var estraverse = require('estraverse');
+        var escodegen = require("escodegen");
+        let code = 'function ast(){}';
+        let ast = esprima.parse(code);
+        console.log(ast);
+        estraverse.traverse(ast,{
+        enter(node){
+            node.name += '_ext';
+        },
+        leave(node){
+            // console.log(node.type);
+        }
+        });
+        let generated = escodegen.generate(ast);
+        console.log(generated);
+
+### babel的基础和API使用
+
+核心包
+
+- babel-core:babel转译器本身，提供了babel的转译API,如babel.transform等，用来对代码进行转译
+- babylon:js的词法解析器
+- babel-tranverse:用于对AST进行遍历
+- babel-generator:根据AST生成代码
+
+功能包
+
+- babel-types:用于检验、构建和改变AST树的节点
+- babel-template:辅助函数，用于从字符串形式的代码构建AST树节点
+- babel-helpers:一系列预制的babel-template函数，用于提供给一些plugins使用
+- babel-code-frames:用户生成错误信息，打印出错误点源代码帧以及指出出错位置
+- babel-plugin-xxx:babel转译过程中使用到的插件
+- bable-preset-xxx:transfrom阶段使用的一系列plugin
+- babel-polyfill:js标准新增的原生对象和API的shim,实现上仅仅是core-js和regenerator-runtime两个包的封装
+- babel-runtime:功能类似于babel-polyfill,一般用于libray或plugin中
+
+babel的配置
+
+如果是以命令行方式使用babel，那么babel的设置就以命令行参数的形式带过去；
+还可以在package.json里在babel字段添加设置；
+但是建议还是使用一个单独的.babelrc文件，把babel的设置都放置在这里，所有babel API的options（除了回调函数之外）都能够支持
+
+
+- env：指定在不同环境下使用的配置。比如production和development两个环境使用不同的配置，就可以通过这个字段来配置。env字段的从process.env.BABEL_ENV获取，如果BABEL_ENV不存在，则从process.env.NODE_ENV获取，如果NODE_ENV还是不存在，则取默认值"development"
+
+- plugins：要加载和使用的插件列表，插件名前的babel-plugin-可省略；plugin列表按从头到尾的顺序运行
+
+- presets：要加载和使用的preset列表，preset名前的babel-preset-可省略；presets列表的preset按从尾到头的逆序运行（为了兼容用户使用习惯）
+
+- 同时设置了presets和plugins，那么plugins的先运行；每个preset和plugin都可以再配置自己的option
+
+babel的工作原理
+
+babel的转译过程也分为三个阶段：parsing、transforming、generating
+
+> ES6代码输入 ==》 babylon进行解析 ==》 得到AST ==》 plugin用babel-traverse对AST树进行遍历转译 ==》 得到新的AST树 ==》 用babel-generator通过AST树生成ES5代码
+
+babel只是转译新标准引入的语法，比如es6中的箭头函数转译成es5的函数，而新标准引入的新的原生对象，部分原生对象新增的原型方法、新增的API这些babel是没有把那转译的，需要用户自行引入polyfill来解决
+
+presets
+
+如果我们要自行配置转译过程中使用的各类插件，那太痛苦了，所以babel官方帮我们做了一些预设的插件集，称之为preset，这样我们只需要使用对应的preset就可以了
+
+举例babel提供了如下的preset
+
+- es2015
+- es2016
+- es2017
+- env
+
+
+
+
+
+
+
+
+### tapable
+
+webpack本质就是一种事件流的机制，它的工作流程及㐊将各个插件串联起来，而实现这一切的核心就是Tapable，webpack中最核心的负责编译的compiler和负责创建bundles的compilaction都是Tapable的实例
+
+
+
+
+
 ## 4. webpack制作loader
 
 
