@@ -680,24 +680,32 @@ core-js/es6（core-js/library/es6）就包含了全部的ES6特性，
     });
     console.log(result.code);
 
-
-
-
-
-
-
-
-
-
 ### tapable
 
 webpack本质就是一种事件流的机制，它的工作流程及㐊将各个插件串联起来，而实现这一切的核心就是Tapable，webpack中最核心的负责编译的compiler和负责创建bundles的compilaction都是Tapable的实例
 
+    const {
+        SyncHook,
+        SyncBailHook,
+        SyncLoopHook,
+        AsyncParalleHook,
+        AsyncParalleBaiHook,
+        AsyncSeriesHook,
+        AsyncSeriesBailHook,
+        AsyncSeriesWaterfallHook
+    } = require('tapable')
+
+syncHook
+
+    let {SyncHook} = require('tapable');
+    let queue = new SyncHook(['name']);
+        
 
 
 
 
 ## 4. webpack制作loader
+
 
 
 ## 5. webpack制作plugin
