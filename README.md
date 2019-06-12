@@ -577,6 +577,111 @@ presets
 - es2017
 - env
 
+polyfill
+
+polyfill是一个针对es2015+环境的shim,实现上来说的话babel-polyfill包只是简单的把core-js和regenerator runtime包装了一下，这两个包才是真正的实现代码所在
+
+使用babel-polyfill会把ES2015+环境整体引入到你的代码环境中去，让你的代码可以直接使用新标准所引入的新的原生对象、新的API
+
+使用方法
+
+1. 先安装包： npm install --save babel-polyfill
+2. 要确保在入口处导入polyfill，因为polyfill代码需要在所有其他代码前先被调用
+
+        代码方式： import "babel-polyfill"
+        webpack配置： module.exports = { entry: ["babel-polyfill", "./app/js"] };
+
+
+如果只是需要引入部分新原生对象或API，那么可以按需引入，而不必导入全部的环境，具体见下文的core-js
+
+runtime
+
+直接使用babel-polyfill对于应用或页面等环境在你的控制之中的情况来说，并没有什么问题，但是对于library中使用polyfill,就变的不可行了。因为library是供外部使用的，但是外部的环境并不在libaray的可控范围，而polyfill是会污染原来的全局环境的，所以这时候,babel-runtime就可以派上用场了
+
+transfrom-runtime和babel-runtime
+
+
+babel-plugin-transform-runtime插件依赖babel-runtime，babel-runtime是真正提供runtime环境的包；也就是说transform-runtime插件是把js代码中使用到的新原生对象和静态方法转换成对runtime实现包的引用，举个例子如下：
+
+    // 输入的ES6代码
+    var sym = Symbol();
+    // 通过transform-runtime转换后的ES5+runtime代码 
+    var _symbol = require("babel-runtime/core-js/symbol");
+    var sym = (0, _symbol.default)();
+
+
+从上面这个例子可见，原本代码中使用的ES6新原生对象Symbol被transform-runtimec插件转换成了babel-runtime的实现，既保持了Symbol的功能，同时又没有像polyfill那样污染全局环境（因为最终生成的代码中，并没有对Symbol的引用）
+
+transform-runtime插件的功能
+
+- 把代码中的使用到的ES6引入的新原生对象和静态方法用babel-runtime/core-js导出的对象和方法替代
+- 当使用generators或async函数时候，用babel-runtime/regenerator导出的函数取代
+- 把babel生成的辅助函数改为用babel-runtime/helpers导出的函数替（babel默认会在每个文件顶部放置所需要的辅助函数，如果文件多的话，这些辅助函数就在每个文件中都重复了，通过引用babel-runtime/helpers就可以统一起来，减少代码体积）
+
+上述三点就是transform-runtime插件所做的事情，由此也可见，babel-runtime就是一个提供了regenerator、core-js和helpers的运行时库。
+建议不要直接使用babel-runtime，因为transform-runtime依赖
+babel-runtime，大部分情况下都可以用transform-runtime达成目的。
+
+
+此外，transform-runtime在.babelrc里配置的时候，还可以设置helpers、polyfill、regenerator这三个开关，以自行决定runtime是否要引入对应的功能。
+
+core-js
+
+ore-js包才上述的polyfill、runtime的核心，因为polyfill和runtime其实都只是对core-js和regenerator的再封装，方便使用而已。
+
+
+但是polyfill和runtime都是整体引入的，不能做细粒度的调整，如果我们的代码只是用到了小部分ES6而导致需要使用polyfill和runtime的话，会造成代码体积不必要的增大（runtime的影响较小）。所以，按需引入的需求就自然而然产生了，这个时候就得依靠core-js来实现了。
+
+
+首先，core-js有三种使用方式：
+
+- 默认方式：require('core-js') 这种方式包括全部特性，标准的和非标准的
+- 库的形式： var core = require('core-js/library') 这种方式也包括全部特性，只是它不会污染全局名字空间
+- 只是shim： require('core-js/shim')或var shim = require('core-js/library/shim') 这种方式只包括标准特性（就是只有polyfill功能，没有扩展的特性）
+
+core-js的结构是高度模块化的，它把每个特性都组织到一个小模块里，然后再把这些小模块组合成一个大特性，层层组织。比如：
+
+core-js/es6（core-js/library/es6）就包含了全部的ES6特性，
+
+而core-js/es6/array（core-js/library/es6/array）则只包含ES6的Array特性，
+
+而core-js/fn/array/from（core-js/library/fn/array/from）则只有Array.from这个实现
+
+> 总结polyfill和runtime和core-js三者之间的关系都是要将新的es2015的语法特性加入到我们的项目中去，只不过polyfill是全局的,runtime是不污染全局的,而core-js是定制化的引入
+
+### babel的插件开发
+
+案例：转化箭头函数
+
+    let babel = require('babel-core');
+    let types = require('babel-types');
+    const code = `const sum = (a,b)=>a+b`;
+    // babel-eslint
+
+    const visitor = {
+        ArrowFunctionExpression:{
+            enter(path) {
+                let node = path.node;
+                let expression = node.body;
+                let params = node.params;
+                let returnStatement = types.returnStatement(expression);
+                let block = types.blockStatement([
+                    returnStatement
+                ]);
+                let func = types.functionExpression(null,params, block,false, false);
+                path.replaceWith(func);
+            }
+        }
+    }
+    const result = babel.transform(code,{
+        plugins:[
+            {visitor}
+        ]
+    });
+    console.log(result.code);
+
+
+
 
 
 
