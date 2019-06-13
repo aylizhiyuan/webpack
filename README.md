@@ -695,14 +695,9 @@ webpack本质就是一种事件流的机制，它的工作流程及㐊将各个�
         AsyncSeriesWaterfallHook
     } = require('tapable')
 
-syncHook
-
-    let {SyncHook} = require('tapable');
-    let queue = new SyncHook(['name']);
-        
-
-
-
+- syncHook 串行同步执行,不关心返回值
+- SyncBailHook  串行同步执行，有一个返回值不为null则跳过剩下的逻辑
+- SyncLoopHook 监听函数返回true表示继续循环，返回undefine表示结束循环
 
 ## 4. webpack制作loader
 
