@@ -64,7 +64,7 @@ module.exports = {
             template: './src/home.html',
             filename: 'home.html'
         }),
-        new HelloPlugin({name:'zfpx'}),
+        new HelloPlugin({name:'zypx'}),
         new EmitPlugin(),
         new FilesPlugin({
             filename:'files-list.md'
