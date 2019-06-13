@@ -30,7 +30,7 @@ queue.tap('3', function (name) {
     console.log(3, name);
 });
 //如果是异步 的设没有call方法了
-queue.callAsync('zfpx', () => {
+queue.callAsync('zypx', () => {
     console.log('over');
 });//call的意思就是调用的意思，也就是触发事件的意思
 **/
@@ -60,7 +60,7 @@ queue.tapAsync('3', function (name, cb) {
 
 });
 //如果是异步 的设没有call方法了
-queue.callAsync('zfpx', () => {
+queue.callAsync('zypx', () => {
     console.log('over');
     console.timeEnd('cost');
 });//call的意思就是调用的意思，也就是触发事件的意思
@@ -99,12 +99,12 @@ queue.tapPromise('3', function (name, cb) {
 });
 /**
 //如果是异步 的设没有call方法了
-queue.callAsync('zfpx', () => {
+queue.callAsync('zypx', () => {
     console.log('over');
     console.timeEnd('cost');
 });//call的意思就是调用的意思，也就是触发事件的意思
  */
-queue.promise('zfpx').then(() => {
+queue.promise('zypx').then(() => {
     console.log('ok');
     console.timeEnd('cost');
 }, () => {

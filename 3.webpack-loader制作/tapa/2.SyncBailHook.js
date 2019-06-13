@@ -29,4 +29,4 @@ queue.tap('2', function (name, age) {
 queue.tap('3', function (name, age) {
     console.log(name, 3);
 });
-queue.call('zfpx');//call的意思就是调用的意思，也就是触发事件的意思
+queue.call('zypx');//call的意思就是调用的意思，也就是触发事件的意思
