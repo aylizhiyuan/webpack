@@ -717,7 +717,117 @@ loader是导出为一个函数的node模块。该函数在loader转换资源的�
 
 ## 5. webpack制作plugin
 
+webpack插件由以下组成：
 
+- 一个javascript命名函数
+- 在插件函数的prototype上定义一个apply方法
+- 指定一个绑定到webpack自身的事件钩子
+- 处理webpack内部实例的特定数据
+- 功能 完成后调用webpack提供的回调
+
+        class CompilationPlugin {
+            constructor(options){
+                this.options = options;
+            }
+            aplly(compiler){
+                compiler.hooks.compilation.tap('CompilationPlugin',function(compilation){
+                    compilation.hooks.optimize.tap('optimize',function(){
+                        console.log("资源正被优化")
+                    })
+                })
+            }
+        }
+        module.exports = CompilationPlugin;
+
+### compiler和compilation
+
+在插件开发中最重要的两个资源就是compiler和compilation对象。理解它们的角色是扩展webpack引擎重要的第一步。
+
+- compiler 对象代表了完整的 webpack 环境配置。这个对象在启动 webpack 时被一次性建立，并配置好所有可操作的设置，包括 options，loader 和 plugin。当在 webpack 环境中应用一个插件时，插件将收到此 compiler 对象的引用。可以使用它来访问 webpack 的主环境。
+
+- compilation 对象代表了一次资源版本构建。当运行 webpack 开发环境中间件时，每当检测到一个文件变化，就会创建一个新的 compilation，从而生成一组新的编译资源。一个 compilation 对象表现了当前的模块资源、编译生成资源、变化的文件、以及被跟踪依赖的状态信息。compilation 对象也提供了很多关键时机的回调，以供插件做自定义处理时选择使用。
+
+
+### 基本插件架构
+
+插件是由「具有 apply 方法的 prototype 对象」所实例化出来的。这个 apply 方法在安装插件时，会被 webpack compiler 调用一次。apply 方法可以接收一个 webpack compiler 对象的引用，从而可以在回调函数中访问到 compiler 对象。一个简单的插件结构如下
+
+    class DonePlugin{
+        constructor(options) {
+            this.options=options;
+        }
+        apply(compiler) {
+            compiler.hooks.done.tap('DonePlugin', ()=> {
+                console.log('Hello ',this.options.name);
+            });
+        }
+    }
+    module.exports=DonePlugin;
+
+然后，要安装这个插件，只需要在你的 webpack 配置的 plugin 数组中添加一个实例
+
+    const DonePlugin=require('./plugins/DonePlugin');
+    module.exports={
+        entry: './src/index.js',
+        output: {
+            path: path.resolve('build'),
+            filename:'bundle.js'
+        },
+        plugins: [
+            new DonePlugin({name:'zfpx'})
+        ]
+    }
+
+### 访问 compilation 对象
+
+使用 compiler 对象时，你可以绑定提供了编译 compilation 引用的回调函数，然后拿到每次新的 compilation 对象。这些 compilation 对象提供了一些钩子函数，来钩入到构建流程的很多步骤中
+
+    class CompilationPlugin{
+        constructor(options) {
+            this.options=options;
+        }
+        apply(compiler) {
+            compiler.hooks.compilation.tap('CompilationPlugin',function (compilation) {
+                compilation.hooks.optimize.tap('optimize',function () {
+                    console.log('资源正在被优化');
+                });
+            });
+        }
+    }
+    module.exports=CompilationPlugin;
+
+### 异步编译插件
+
+有一些编译插件中的步骤是异步的，这样就需要额外传入一个 callback 回调函数，并且在插件运行结束时，必须调用这个回调函数。
+
+    class CompilationAsyncPlugin{
+        constructor(options) {
+            this.options=options;
+        }
+        apply(compiler) {
+            compiler.hooks.emit.tapAsync('EmitPlugin',function (compilation,callback) {
+                setTimeout(function () {
+                    console.log('异步任务完成');
+                    callback();
+                },500);
+            });
+        }
+    }
+    module.exports=CompilationAsyncPlugin;
+
+
+
+## 6.总结
+
+webapck实际是从入口开始，遍历所有的入口代码以及入口代码中的所有通过import/require的文件(模块),然后对这些代码根据文件进行切割进行AST构建语法树,然后再通过webpack.config.js中的module配置，对不同的文件应用不同的loader进行语法树的遍历和转化，例如将es6的代码转化为es5的，将less/sass转化为css..... 在转化过程中会加入不同的plugins进行特定时期的处理逻辑，转化完成后生成最终的转化后的代码文件。
+
+> AST主要应用在webpack-loader中，tapable主要应用在webpack-plugins中
+
+思考几个问题有待解决
+
+- webpack中的htmlWebpackPlugin是如何将资源引入到html文件中去的
+- Css中extract-text-webpack-plugin插件是如何将css分成不同的文件的
+- Vue-loder是如何工作的
 
 
 

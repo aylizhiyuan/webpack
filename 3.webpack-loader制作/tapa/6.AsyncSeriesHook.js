@@ -40,6 +40,6 @@ queue.tapAsync('3', function (name, cb) {
         cb();
     }, 3000);
 });
-queue.callAsync('zfpx', () => {
+queue.callAsync('zypx', () => {
     console.timeEnd('cost');
 });
