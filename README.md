@@ -774,7 +774,7 @@ webpack插件由以下组成：
             filename:'bundle.js'
         },
         plugins: [
-            new DonePlugin({name:'zfpx'})
+            new DonePlugin({name:'lzy'})
         ]
     }
 
@@ -817,17 +817,489 @@ webpack插件由以下组成：
 
 
 
-## 6.总结
+## 6.webpack流程
 
-webapck实际是从入口开始，遍历所有的入口代码以及入口代码中的所有通过import/require的文件(模块),然后对这些代码根据文件进行切割进行AST构建语法树,然后再通过webpack.config.js中的module配置，对不同的文件应用不同的loader进行语法树的遍历和转化，例如将es6的代码转化为es5的，将less/sass转化为css..... 在转化过程中会加入不同的plugins进行特定时期的处理逻辑，转化完成后生成最终的转化后的代码文件。
+Entry：入口，Webpack 执行构建的第一步将从 Entry 开始，可抽象成输入。 Module：模块，在 Webpack 里一切皆模块，一个模块对应着一个文件。Webpack 会从配置的 Entry 开始递归找出所有依赖的模块。 Chunk：代码块，一个 Chunk 由多个模块组合而成，用于代码合并与分割。 Loader：模块转换器，用于把模块原内容按照需求转换成新内容。 Plugin：扩展插件，在 Webpack 构建流程中的特定时机会广播出对应的事件，插件可以监听这些事件的发生，在特定时机做对应的事情。
 
 > AST主要应用在webpack-loader中，tapable主要应用在webpack-plugins中
 
-思考几个问题有待解决
+### 流程概括
 
-- webpack中的htmlWebpackPlugin是如何将资源引入到html文件中去的
-- Css中extract-text-webpack-plugin插件是如何将css分成不同的文件的
-- Vue-loder是如何工作的
+- 初始化参数:从配置参数和shell语句中读取与合并参数，得到最终的参数
+- 开始编译:用上一步得到的参数初始化Compiler对象，加载所有配置的插件，执行对象的run方法进行编译
+- 确定入口：根据配置中的entry找出所有的入口文件
+- 编译模块：从入口文件出发，调用所有配置的loader对模块进行翻译，再找出该模块依赖的模块，再递归本步骤直到所有入口依赖的文件都经过了本步骤的处理
+- 完成模块编译：在经过第四步使用Loader翻译完所有的模块后，得到每个模块被翻译后的最终内容以及他们之间的依赖关系
+- 输出资源：根据入口和模块之间的依赖关系，组装成一个个包含多个模块的chunk,再把每个chunk转化成一个单独的文件加入到输出列表，这步是可以修改输出内容的最后机会
+- 输出完成：在确定好输出内容后，根据配置确定输出的路径和文件名，把文件内容写入到文件系统
+
+> 在以上过程中，wepback会在特定的时间点广播出特定的事件，插件在监听到感兴趣的事件后会执行特定的逻辑，并且插件可以调用wepback提供的API改变webpack的运行结果
+
+### 详细流程
+
+webpack的构建流程可以分为以下三个阶段：
+
+- 初始化：启动构建，读取与合并配置参数，加载 Plugin，实例化 Compiler。
+- 编译：从 Entry 发出，针对每个 Module 串行调用对应的 Loader 去翻译文件内容，再找到该 Module 依赖的 Module，递归地进行编译处理。
+- 输出：对编译后的 Module 组合成 Chunk，把 Chunk 转换成文件，输出到文件系统。
+
+
+### 初始化阶段
+
+
+1. 初始化参数	从配置文件和 Shell 语句中读取与合并参数，得出最终的参数。	webpack-cli/bin/webpack.js:436
+
+2. 实例化 Compiler	用上一步得到的参数初始化 Compiler 实例，Compiler 负责文件监听和启动编译。Compiler 实例中包含了完整的 Webpack 配置，全局只有一个 Compiler 实例。	webpack/lib/webpack.js:32
+
+3. 加载插件	依次调用插件的 apply 方法，让插件可以监听后续的所有事件节点。同时给插件传入 compiler 实例的引用，以方便插件通过 compiler 调用 Webpack 提供的 API。	webpack/lib/webpack.js:42
+
+4. environment	开始应用 Node.js 风格的文件系统到 compiler 对象，以方便后续的文件寻找和读取。	webpack/lib/webpack.js:40
+
+5. entry-option	读取配置的 Entrys，为每个 Entry 实例化一个对应的 EntryPlugin，为后面该 Entry 的递归解析工作做准备。	webpack/lib/webpack.js:275
+
+6. after-plugins	调用完所有内置的和配置的插件的 apply 方法。	webpack/lib/WebpackOptionsApply.js:359
+
+7. after-resolvers	根据配置初始化完 resolver，resolver 负责在文件系统中寻找指定路径的文件。	webpack/lib/WebpackOptionsApply.js:396
+
+
+### 编译阶段
+
+1. run	启动一次新的编译。	webpack/lib/webpack.js:194
+
+2. watch-run	和 run 类似，区别在于它是在监听模式下启动的编译，在这个事件中可以获取到是哪些文件发生了变化导致重新启动一次新的编译。
+
+3. compile	该事件是为了告诉插件一次新的编译将要启动，同时会给插件带上 compiler 对象。	webpack/lib/Compiler.js:455
+
+4. compilation	当 Webpack 以开发模式运行时，每当检测到文件变化，一次新的 Compilation 将被创建。一个 Compilation 对象包含了当前的模块资源、编译生成资源、变化的文件等。Compilation 对象也提供了很多事件回调供插件做扩展。	webpack/lib/Compiler.js:418
+
+5. make	一个新的 Compilation 创建完毕，即将从 Entry 开始读取文件，根据文件类型和配置的 Loader 对文件进行编译，编译完后再找出该文件依赖的文件，递归的编译和解析。	webpack/lib/Compiler.js:459
+
+6. after-compile	一次 Compilation 执行完成。	webpack/lib/Compiler.js:467
+
+在编译阶段中，最重要的要数 compilation 事件了，因为在 compilation 阶段调用了 Loader 完成了每个模块的转换操作，在 compilation 阶段又包括很多小的事件，它们分别是:
+
+1. build-module	使用对应的 Loader 去转换一个模块。	webpack/lib/Compilation.js:345
+
+2. normal-module-loader	在用 Loader 对一个模块转换完后，使用 acorn 解析转换后的内容，输出对应的抽象语法树（AST），以方便 Webpack 后面对代码的分析。	webpack/lib/NormalModule.js:177
+
+3. program	从配置的入口模块开始，分析其 AST，当遇到 require 等导入其它模块语句时，便将其加入到依赖的模块列表，同时对新找出的依赖模块递归分析，最终搞清所有模块的依赖关系。	webpack/lib/Parser.js:1947
+
+4. seal	所有模块及其依赖的模块都通过 Loader 转换完成后，根据依赖关系开始生成 Chunk。	webpack/lib/Compilation.js:826
+
+### 输出阶段
+
+- should-emit	所有需要输出的文件已经生成好，询问插件哪些文件需要输出，哪些不需要。	webpack/lib/Compiler.js:146
+
+- emit	确定好要输出哪些文件后，执行文件输出，可以在这里获取和修改输出内容。	webpack/lib/Compiler.js:287
+
+- after-emit	文件输出完毕。	webpack/lib/Compiler.js:278
+
+- done	成功完成一次完成的编译和输出流程。	webpack/lib/Compiler.js:166
+
+- failed	如果在编译和输出流程中遇到异常导致 Webpack 退出时，就会直接跳转到本步骤，插件可以在本事件中获取到具体的错误原因。
+
+> 在输出阶段已经得到了各个模块经过转换后的结果和其依赖关系，并且把相关模块组合在一起形成一个个 Chunk。 在输出阶段会根据 Chunk 的类型，使用对应的模版生成最终要要输出的文件内容。
+
+
+
+### 代码流程
+
+node_modules/.bin/webpack-cli
+
+- 通过yargs获得shell中的参数
+
+- 把webpack.config.js中的参数和shell参数整合到options对象上
+
+- 调用webpack-cli/bin/webpack.js开始编译和打包
+
+- webpack-cli/bin/webpack.js中返回一个compiler对象，并调用了compiler.run()
+
+- lib/Compiler.js中，run方法触发了before-run、run两个事件，然后通过readRecords读取文件，通过compile进行打包,该方法中实例化了一个Compilation类
+
+- 打包时触发before-compile、compile、make等事件
+
+- make事件会触发SingleEntryPlugin监听函数，调用compilation.addEntry方法
+
+- 这个方法通过调用其私有方法_addModuleChain完成了两件事：根据模块的类型获取对应的模块工厂并创建模块；构建模块
+
+    - 调用loader处理模块之间的依赖
+    - 将loader处理后的文件通过acorn抽象成抽象语法树AST
+    - 遍历AST，构建该模块的所有依赖
+
+- 调用Compilation的finish及seal方法
+
+
+## 7.编写webpack
+
+### 1. 创建项目
+
+    "bin": {"lzypack": "./bin/lzypack.js"},
+
+### 2. 创建可执行文件
+
+    #! /usr/bin/env node
+    const path = require('path');
+    const fs = require('fs');
+    const Compiler = require('../lib/Compiler');//引入Compiler构造函数
+    let root = process.cwd();
+    let options = require(path.resolve(root, 'webpack.config.js'));
+    let compiler = new Compiler(options);
+    compiler.hooks.entryOption.call(options);
+    compiler.run();
+
+### 3. 创建compiler对象
+
+    const { SyncHook } = require('tapable');
+    const path = require('path');
+    const fs = require('fs');
+    const esprima = require('esprima');
+    const estraverse = require('estraverse');
+    const escodegen = require('escodegen');
+
+    class Compiler {
+        constructor(options) {
+            this.options = options;//保存选项对象
+            this.hooks = {
+                entryOption: new SyncHook(['options']),//保存一个解析选项对象的钩子
+                run: new SyncHook([]),
+                afterPlugins: new SyncHook([]),
+                compile: new SyncHook(),//编译
+                afterCompile: new SyncHook(),//编译完成后
+                emit: new SyncHook(),//发射
+                done: new SyncHook()//完成
+            }
+            let plugins = options.plugins;//加载自定义插件
+            if (plugins && plugins.length > 0) {
+                plugins.forEach(plugin => {
+                    plugin.apply(this);
+                });
+            }
+            this.hooks.afterPlugins.call();//发射加载完成事件
+        }
+        run() {
+
+        }
+
+    }
+    module.exports = Compiler;
+
+### 4. 开始编译
+
+    const {SyncHook} = require('tapable');
+    const path = require('path');
+    const esprima = require('esprima');
+    const estraverse = require('estraverse');
+    const escodegen = require('escodegen');
+    const ejs = require('ejs');
+    const fs = require('fs');
+    class Compiler{
+        constructor(options){
+            this.options = options;
+            this.hooks = {
+                entryOption:new SyncHook(['compiler']),
+                afterPlugins:new SyncHook(['compiler']),
+                run:new SyncHook(['compiler']),
+                compile:new SyncHook(['compiler']),
+                afterCompile:new SyncHook(['compiler']),
+                emit:new SyncHook(['compiler']),
+                done:new SyncHook(['compiler'])
+            }
+            let plugins = options.plugins;
+            plugins.forEach((plugin)=>{
+                plugin.apply(this);
+            });
+            this.hooks.afterPlugins.call(this);
+        }
+        run(){
+            const compiler = this;
+            this.hooks.run.call(compiler);
+            let root = process.cwd();//webpack所在目录的绝对路
+            let {
+                entry,
+                output:{
+                    path:dist,
+                    filename
+                },
+                module:{
+                    rules
+                }
+            } = this.options;//入口 输出 目录 和文件名
+            let modules = {};//存放所有的模块
+            let entryId; //入口ID 所有的ID都是相对于root根目录的
+            this.hooks.compile.call(compiler);
+            parseModule(path.resolve(root,entry),true);//解析模块
+            this.hooks.afterCompile.call(compiler);
+            let tmpl = fs.readFileSync(path.join(__dirname,'main.ejs'),'utf8');
+            let bundle = ejs.compile(tmpl)({modules,entryId});
+            fs.writeFileSync(path.join(dist,filename),bundle);
+            this.hooks.emit.call(compiler);
+            this.hooks.done.call(compiler);
+
+            function parseModule(modulePath,isEntry){//解析模块和依赖的模块 路径是一个绝对路径
+                let source = fs.readFileSync(modulePath,'utf8');//读取此模块的文件内容
+                for(let i=0;i<rules.length;i++){
+                    let rule = rules[i];
+                    if(rule.test.test(modulePath)){
+                        let use = rule.use || rule.loader
+                        if(use instanceof Array){
+                            for(let j=use.length-1;j>=0;j--){
+                                let loader = require(path.resolve(root,'node_modules',use[j]));
+                                source = loader(source);
+                            }
+                        }else{
+                            let loader = require(path.resolve(root,'node_modules',typeof use == 'string'?use:use.loader));
+                        }
+                        break;
+                    }
+                }
+                let moduleId = './'+path.relative(root,modulePath);
+                if(isEntry) entryId = moduleId;
+                let parseResult = parse(source,path.dirname(moduleId));
+                let requires = parseResult.requires;//取得依赖的模块数组
+                modules[moduleId] = parseResult.source;//记录ID和转换后代码的对应关系
+                if(requires && requires.length>0){
+                    requires.forEach(require=>{
+                        parseModule(path.join(root,require))
+                    });
+                }
+            }
+
+            //源码和父路径
+            function parse(source,parentPath){
+            let ast = esprima.parse(source);
+            let requires = [];
+            estraverse.replace(ast,{
+                enter(node,parent){
+                        if(node.type == 'CallExpression' && node.callee.name == 'require'){
+                            let name = node.arguments[0].value;//取得参数里的值
+                            name += (name.lastIndexOf('.')>0?'':'.js');//添加后缀名
+                            let moduleId = './'+path.join(parentPath,name);//取得此模块ID,也是相对于根路径的
+                            requires.push(moduleId);
+                            node.arguments = [{type:'Literal',value:moduleId}];
+                            return node;
+                        }
+                    return node;
+                }
+            });
+            source = escodegen.generate(ast);//重新生成代码
+            return {source,requires};//转换后的代码和依赖的模块
+            }
+        }
+    }
+
+    module.exports = Compiler;
+
+### 5. 产出文件
+
+    /******/ (function(modules) { // webpackBootstrap
+    /******/     // The module cache
+    /******/     var installedModules = {};
+    /******/
+    /******/     // The require function
+    /******/     function require(moduleId) {
+    /******/
+    /******/         // Check if module is in cache
+    /******/         if(installedModules[moduleId]) {
+    /******/             return installedModules[moduleId].exports;
+    /******/         }
+    /******/         // Create a new module (and put it into the cache)
+    /******/         var module = installedModules[moduleId] = {
+    /******/             i: moduleId,
+    /******/             l: false,
+    /******/             exports: {}
+    /******/         };
+    /******/
+    /******/         // Execute the module function
+    /******/         modules[moduleId].call(module.exports, module, module.exports, require);
+    /******/
+    /******/         // Flag the module as loaded
+    /******/         module.l = true;
+    /******/
+    /******/         // Return the exports of the module
+    /******/         return module.exports;
+    /******/     }
+    /******/     // Load entry module and return exports
+    /******/     return require(require.s = "<%-entryId%>");
+    /******/ })
+    /************************************************************************/
+    /******/ ({
+    <%
+    for(let id in modules){
+        let source = modules[id];%>
+    /***/ "<%-id%>":
+    /***/ function(module, exports,require) {
+
+    eval(`<%-source%>`);
+
+    /***/ },
+    <%}%>
+    /******/ });
+
+### 6. 支持loader
+
+    var less = require('less');
+    module.exports = function (source) {
+        let css;
+        less.render(source, (err, output) => {
+            css = output.css;
+        });
+        return css.replace(/\n/g,'\\n','g');
+    }
+
+### 7. 支持插件
+
+    const qiniu=require('qiniu');
+    const path=require('path');
+    const fs=require('fs');
+    class UploadPlugin{
+    constructor(options) {
+        this.options=options||{};
+    }
+    apply(compiler) {
+        compiler.hooks.afterEmit.tap('UploadPlugin', (compilation) => {
+            let {bucket='video',domain="img.zxb.cn",accessKey='fi5imW04AkxJItuFbbRy1ffH1HIoo17HbWOXw5fV',secretKey='ru__Na4qIor4-V7U4AOJyp2KBUYEw1NWduiJ4Pby'}=this.options;
+            var mac=new qiniu.auth.digest.Mac(accessKey,secretKey);
+            var options = {
+                scope: bucket,
+            };
+            var putPolicy = new qiniu.rs.PutPolicy(options);
+            var uploadToken=putPolicy.uploadToken(mac);
+            var config = new qiniu.conf.Config();
+
+            console.log(compilation.assets);
+
+            let promises = Object.keys(compilation.assets).map(asset => upload(asset));
+            Promise.all(promises).then(function (data) {
+                console.log('发布CDN成功!');
+            });
+
+            function upload(filename) {
+                return new Promise(function (resolve,reject) {
+                    var localFile=path.join(__dirname,'../build',filename);
+                    var formUploader = new qiniu.form_up.FormUploader(config);
+                    var putExtra = new qiniu.form_up.PutExtra();
+                    var key=filename;
+                    formUploader.putFile(uploadToken,key,localFile,putExtra,function (err,body,info) {
+                        if (err)
+                            reject(err);
+                        else
+                            resolve(body)
+                    });
+                });
+            }
+        });
+    }
+    }
+    module.exports=UploadPlugin;
+
+### 8. 测试案例
+
+index.js
+
+    let name = require('./a/a1');
+    require('./index.less');
+    alert(name);
+
+index.less
+
+    body{color:red;}
+
+webpack.config.js
+
+    const path = require('path');
+    const AfterCompilerWebpackPlugin = require('./src/plugins/after-compiler-webpack-plugin');
+    const CompilerWebpackPlugin = require('./src/plugins/compiler-webpack-plugin');
+    const DoneWebpackPlugin = require('./src/plugins/done-webpack-plugin');
+    const EmitWebpackPlugin = require('./src/plugins/emit-webpack-plugin');
+    const OptionWebpackPlugin = require('./src/plugins/option-webpack-plugin.js');
+    const RunWebpackPlugin = require('./src/plugins/run-webpack-plugin');
+    module.exports = {
+        entry: './src/index.js',
+        output: {
+            path: path.resolve('dist'),
+            filename: 'bundle.js'
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.less/,
+                    use: ['style-loader', 'less-loader']
+                }
+            ]
+        },
+        plugins: [
+            new AfterCompilerWebpackPlugin(),
+            new CompilerWebpackPlugin(),
+            new DoneWebpackPlugin(),
+            new EmitWebpackPlugin(),
+            new OptionWebpackPlugin(),
+            new RunWebpackPlugin()
+        ]
+    }
+
+plugins
+
+    class Plugin{
+        apply(compiler) {
+            compiler.hooks.entryOption.tap('Plugin',(option) => {
+                console.log('run-webpack-plugin');
+            });
+        }
+    }
+    module.exports=Plugin;
+
+    class Plugin{
+        apply(compiler) {
+            compiler.hooks.entryOption.tap('Plugin',(option) => {
+                console.log('run-webpack-plugin');
+            });
+        }
+    }
+    module.exports=Plugin;
+
+    class Plugin{
+        apply(compiler) {
+            compiler.hooks.entryOption.tap('Plugin',(option) => {
+                console.log('compiler');
+            });
+        }
+    }
+    module.exports=Plugin;
+
+
+    class Plugin{
+        apply(compiler) {
+            compiler.hooks.entryOption.tap('Plugin',(option) => {
+                console.log('after compiler');
+            });
+        }
+    }
+    module.exports=Plugin;
+
+    class Plugin{
+        apply(compiler) {
+            compiler.hooks.entryOption.tap('Plugin',(option) => {
+                console.log('emit');
+            });
+        }
+    }
+    module.exports=Plugin;
+
+    class Plugin{
+        apply(compiler) {
+            compiler.hooks.entryOption.tap('Plugin',(option) => {
+                console.log('done');
+            });
+        }
+    }
+    module.exports=Plugin;
+
+
+
+
+
+
+
 
 
 
