@@ -1,3 +1,4 @@
+//将JS的代码内联到index.html中去
 class InlinePlugin{
     apply(compiler){
         compiler.hooks.compilation.tap('compilation',function(compilation){
