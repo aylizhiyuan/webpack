@@ -1037,6 +1037,8 @@ node_modules/.bin/webpack-cli
 
             function parseModule(modulePath,isEntry){//解析模块和依赖的模块 路径是一个绝对路径
                 let source = fs.readFileSync(modulePath,'utf8');//读取此模块的文件内容
+
+                //添加Loader,获取所有的loader循环遍历
                 for(let i=0;i<rules.length;i++){
                     let rule = rules[i];
                     if(rule.test.test(modulePath)){
@@ -1052,6 +1054,8 @@ node_modules/.bin/webpack-cli
                         break;
                     }
                 }
+
+                //这一步主要是遍历ast,将require('')里面的代码加上绝对路径以及取出文件中的依赖项
                 let moduleId = './'+path.relative(root,modulePath);
                 if(isEntry) entryId = moduleId;
                 let parseResult = parse(source,path.dirname(moduleId));
