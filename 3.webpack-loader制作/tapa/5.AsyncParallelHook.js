@@ -1,22 +1,11 @@
 let { AsyncParallelHook } = require('tapable');
-/**
-class AsyncParallelHook {
-    constructor() {
-        this.hook;
-    }
-    tap(name, fn) {
-        this.hook = fn;
-    }
-    call() {
-        let result;
-        do {
-            result = this.hook(...arguments);
-        } while (result);
-    }
-}
- */
 //上一个函数的返回值可以传给下一个函数
 let queue = new AsyncParallelHook(['name']);
+
+
+// 第一种方式 tap注册
+
+
 /** 
 console.time('cost');
 //异步并发执行
@@ -34,6 +23,10 @@ queue.callAsync('zypx', () => {
     console.log('over');
 });//call的意思就是调用的意思，也就是触发事件的意思
 **/
+
+
+// 第二种注册方式tapAsync
+
 
 /**
 console.time('cost');
@@ -66,6 +59,7 @@ queue.callAsync('zypx', () => {
 });//call的意思就是调用的意思，也就是触发事件的意思
 **/
 
+//第三种注册方式tapPromise
 
 console.time('cost');
 //异步并发执行

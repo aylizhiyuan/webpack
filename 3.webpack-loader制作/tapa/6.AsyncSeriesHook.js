@@ -19,7 +19,7 @@ class AsyncSeriesHook {
         next();
     }
 }
-//异步串行执行
+//异步串行执行,可以理解为异步的同步方式
 let queue = new AsyncSeriesHook(['name']);
 console.time('cost');
 queue.tapAsync('1', function (name, cb) {
