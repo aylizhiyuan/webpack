@@ -11,6 +11,7 @@ class FilesPlugin{
        for(let attr in compilation.assets){
          content+=`- ${attr} \n`;
        }
+       //输出一个filelist.md文件，即在assets中添加一个输出的键值
        compilation.assets[this.options.filename||'filelist.md'] ={ 
            source(){
                return content;
