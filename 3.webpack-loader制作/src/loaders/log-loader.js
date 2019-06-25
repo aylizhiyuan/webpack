@@ -1,5 +1,6 @@
 const loaderUtils = require('loader-utils');
 const validateOptions = require('schema-utils');
+//source就是文件的源内容
 module.exports = function (source) {
     const options = loaderUtils.getOptions(this);
     let schema = {

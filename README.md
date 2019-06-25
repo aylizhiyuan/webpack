@@ -685,14 +685,14 @@ core-js/es6（core-js/library/es6）就包含了全部的ES6特性，
 webpack本质就是一种事件流的机制，它的工作流程及㐊将各个插件串联起来，而实现这一切的核心就是Tapable，webpack中最核心的负责编译的compiler和负责创建bundles的compilaction都是Tapable的实例
 
     const {
-        SyncHook,
-        SyncBailHook,
-        SyncLoopHook,
-        AsyncParalleHook,
-        AsyncParalleBaiHook,
-        AsyncSeriesHook,
-        AsyncSeriesBailHook,
-        AsyncSeriesWaterfallHook
+        SyncHook, //顺序执行的钩子
+        SyncBailHook, // 顺序 带有返回值的钩子
+        SyncLoopHook, //顺序循环执行的钩子
+        AsyncParalleHook, //异步并发执行的钩子
+        AsyncParalleBaiHook, //异步并发带有返回值的钩子
+        AsyncSeriesHook, //异步串行的钩子
+        AsyncSeriesBailHook, //异步串行带有返回值的钩子
+        AsyncSeriesWaterfallHook //异步串行返回值可以传递的钩子
     } = require('tapable')
 
 - syncHook 串行同步执行,不关心返回值

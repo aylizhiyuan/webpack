@@ -4,6 +4,7 @@ class HelloPlugin {
         this.options = options;
     }
     //每个插件都需要提供 一个apply方法
+    //已经废弃的API
     apply1(compiler){
         //compiler要启动一次新的编译
         compiler.plugin('compilation',function(compilation){
@@ -12,6 +13,7 @@ class HelloPlugin {
             });
         })
     }
+    //最新的用法
     apply(compiler){
         //compiler要启动一次新的编译
         compiler.hooks.compilation.tap('compilation',function(compilation,params){
