@@ -49,7 +49,7 @@
     "html-webpack-plugin": "^3.2.0",
     "mini-css-extract-plugin": "^0.4.0",
     "node-notifier": "^5.2.1",
-    "node-sass": "^4.9.0",
+    "node-sass": "^7.0.0",
     "optimize-css-assets-webpack-plugin": "^4.0.2",
     "ora": "^2.1.0",
     "portfinder": "^1.0.13",
